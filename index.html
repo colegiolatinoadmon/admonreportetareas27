@@ -14,13 +14,123 @@
         <h1 class="text-lg font-black text-slate-800">COLEGIO LATINO</h1>
         <p class="text-[11px] font-bold text-slate-500">Panel de Control y Notificaciones de Tareas</p>
       </div>
-      <button onclick="cargarDatos()" class="bg-slate-800 text-white text-xs px-3 py-1.5 rounded-md font-bold hover:bg-slate-700">
-        🔄 Actualizar Lista
-      </button>
+      <div class="flex space-x-2">
+        <button onclick="toggleConfigGeneral()" class="bg-amber-600 text-white text-xs px-3 py-1.5 rounded-md font-bold hover:bg-amber-700 shadow">
+          ⚙ Configurar Plantilla y Logos PDF
+        </button>
+        <button onclick="cargarDatos()" class="bg-slate-800 text-white text-xs px-3 py-1.5 rounded-md font-bold hover:bg-slate-700">
+          🔄 Actualizar Lista
+        </button>
+      </div>
+    </div>
+
+    <!-- PANEL DE CONFIGURACIÓN GLOBAL -->
+    <div id="modal-config-global" class="hidden bg-slate-800 text-white p-4 rounded-xl mb-4 shadow-lg border border-slate-700 space-y-3">
+      <div class="flex justify-between items-center border-b border-slate-700 pb-2">
+        <h2 class="font-black text-sm text-yellow-300">🛠️ Editor Global de Plantilla y Respaldo en Sheets</h2>
+        <button onclick="toggleConfigGeneral()" class="text-slate-400 hover:text-white text-xs font-bold">✕ Cerrar</button>
+      </div>
+
+      <!-- ZONA PARA SUBIR LOGOS A IMGBB -->
+      <div class="bg-slate-900 p-3 rounded-lg border border-slate-700 space-y-2">
+        <p class="text-xs font-bold text-yellow-200">🖼️ Subir Logo (Se aloja automáticamente en ImgBB y se sincroniza en Sheets):</p>
+        
+        <div class="flex flex-wrap items-center gap-3">
+          <div>
+            <label class="text-[10px] text-slate-400 block">Seleccionar archivo de imagen:</label>
+            <input type="file" id="input-archivo-logo" accept="image/*" onchange="subirAImgBB(this.files[0])" class="text-xs bg-slate-800 border border-slate-600 rounded p-1 text-slate-300 file:mr-2 file:py-1 file:px-2 file:rounded file:border-0 file:text-xs file:font-bold file:bg-blue-600 file:text-white cursor-pointer">
+          </div>
+
+          <div>
+            <label class="text-[10px] text-slate-400 block">Alto del Logo (px):</label>
+            <input type="number" id="logo-alto" value="50" onchange="guardarDimensionesLogo()" class="w-20 text-xs bg-slate-800 border border-slate-600 rounded p-1 text-white text-center font-bold">
+          </div>
+          <div>
+            <label class="text-[10px] text-slate-400 block">Ancho del Logo (px):</label>
+            <input type="number" id="logo-ancho" value="auto" onchange="guardarDimensionesLogo()" class="w-20 text-xs bg-slate-800 border border-slate-600 rounded p-1 text-white text-center font-bold" placeholder="auto">
+          </div>
+
+          <button onclick="limpiarLogos()" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded text-xs font-bold self-end">🗑️ Borrar Logo</button>
+        </div>
+
+        <div id="preview-logos-subidos" class="flex flex-wrap gap-2 mt-2 pt-2 border-t border-slate-800"></div>
+        <p id="estado-subida" class="text-[10px] text-emerald-300 italic"></p>
+      </div>
+
+      <p class="text-[11px] text-slate-300">
+        Campos Dinámicos: 
+        <span class="text-yellow-200"><code>{{logos}}</code></span>, 
+        <span class="text-yellow-200"><code>{{alumno}}</code></span>, 
+        <span class="text-yellow-200"><code>{{grupo}}</code></span>, 
+        <span class="text-yellow-200"><code>{{profesor}}</code></span>, 
+        <span class="text-yellow-200"><code>{{materias}}</code></span>, 
+        <span class="text-yellow-200"><code>{{detalles}}</code></span>, 
+        <span class="text-yellow-200"><code>{{fechaAviso}}</code></span>, 
+        <span class="text-yellow-200"><code>{{fechaRecepcion}}</code></span>, 
+        <span class="text-yellow-200"><code>{{idReporte}}</code></span>
+      </p>
+
+      <!-- BARRA ESTILO WORD -->
+      <div class="bg-slate-700 p-2 rounded flex flex-wrap items-center gap-2 text-xs">
+        <button type="button" onclick="aplicarEstilo('bold')" class="bg-slate-600 px-2 py-1 rounded hover:bg-slate-500 font-bold"><b>B</b></button>
+        <button type="button" onclick="aplicarEstilo('italic')" class="bg-slate-600 px-2 py-1 rounded hover:bg-slate-500 italic"><i>I</i></button>
+        <button type="button" onclick="aplicarEstilo('underline')" class="bg-slate-600 px-2 py-1 rounded hover:bg-slate-500 underline"><u>U</u></button>
+        <div class="flex items-center space-x-1 ml-2">
+          <span>Color:</span>
+          <input type="color" onchange="aplicarColor(this.value)" class="w-6 h-6 rounded cursor-pointer border-0 bg-transparent" value="#0f172a">
+        </div>
+        <button onclick="guardarPlantillaGlobal()" class="ml-auto bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded font-bold text-xs">
+          💾 Guardar Plantilla y Respaldar en Sheets
+        </button>
+      </div>
+
+      <!-- ÁREA EDITABLE DE LA PLANTILLA MAESTRA -->
+      <div class="bg-white text-slate-900 p-6 rounded-lg shadow max-w-2xl mx-auto text-xs relative overflow-hidden" style="min-height: 400px;">
+        <div id="plantilla-maestra" contenteditable="true" class="outline-none focus:bg-amber-50 p-2 rounded space-y-4">
+          <div style="position: absolute; top: 0; left: 0; width: 0; height: 0; border-top: 55px solid #0f172a; border-right: 55px solid transparent; z-index: 10;"></div>
+          <div class="flex justify-between items-center border-b-2 border-slate-900 pb-3 mb-4 pl-6">
+            <div class="flex items-center space-x-3">
+              <div class="flex items-center space-x-2">{{logos}}</div>
+              <div>
+                <h2 class="text-xl font-black uppercase tracking-wider text-slate-950">COLEGIO LATINO</h2>
+                <p class="text-[10px] font-semibold text-slate-700">OLIVO S/N FRACC. LOS REYES • TEL 937 37 2 28 63</p>
+              </div>
+            </div>
+            <div class="text-right">
+              <p class="text-xs font-black">No de REPORTE: <span class="text-red-700">{{idReporte}}</span></p>
+              <p class="text-[10px] font-bold text-slate-800">FECHA: {{fechaAviso}}</p>
+            </div>
+          </div>
+          <div class="space-y-4 my-4">
+            <p class="text-justify leading-relaxed">
+              Docente <b>{{profesor}}</b> reporta que el alumno(a) 
+              <b class="text-base uppercase border-b-2 border-slate-900 px-1 font-black">{{alumno}}</b> 
+              del grupo <b>{{grupo}}</b> debe tareas en la asignatura de: <b>{{materias}}</b>.
+            </p>
+            <div class="bg-slate-50 p-3 border border-slate-300 rounded-lg shadow-sm">
+              <p class="font-bold text-xs uppercase mb-1.5 text-slate-800 border-b pb-1">DETALLE DE TAREAS Y LIBROS PENDIENTES:</p>
+              <div class="text-xs text-slate-800 space-y-1">{{detalles}}</div>
+            </div>
+            <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg">
+              <p class="font-black text-xs text-amber-900 uppercase">📅 FECHA EN LA QUE SE RECIBIRÁ LA TAREA:</p>
+              <p class="text-sm font-extrabold text-amber-950 mt-0.5">{{fechaRecepcion}}</p>
+            </div>
+            <p class="text-xs italic text-slate-700 mt-3 leading-normal">
+              Lo anterior para que nos apoye y su hijo (a) se ponga al corriente con sus pendientes escolares.<br>Gracias de antemano por su apoyo.
+            </p>
+          </div>
+          <div class="mt-12 text-center text-xs">
+            <p class="font-bold">Atte.</p>
+            <p class="font-black text-sm uppercase text-slate-900">Dirección de Secundaria y Preparatoria</p>
+            <div class="w-48 border-b border-slate-900 mx-auto mt-10"></div>
+            <p class="text-[10px] text-slate-600 mt-1 font-semibold">Firma de Enterado del Padre o Tutor</p>
+          </div>
+        </div>
+      </div>
     </div>
 
     <!-- PESTAÑAS -->
-    <div class="flex border-b mb-3 space-x-3 text-xs">
+    <div class="flex border-b mb-4 space-x-3 text-xs">
       <button id="btn-tab-pendientes" onclick="cambiarTab('Pendiente')" class="pb-1.5 border-b-2 border-amber-500 font-bold text-amber-600">
         📌 Pendientes de Envío
       </button>
@@ -31,27 +141,35 @@
 
     <div id="cargando" class="text-center py-4">
       <div id="spinner" class="inline-block animate-spin rounded-full h-6 w-6 border-2 border-indigo-600 border-t-transparent mb-1"></div>
-      <p class="text-[11px] font-semibold text-slate-500">Cargando lista de reportes...</p>
+      <p class="text-[11px] font-semibold text-slate-500">Cargando reportes desde Google Sheets...</p>
     </div>
 
-    <!-- LISTADO ULTRA COMPACTO -->
-    <div id="lista-reportes" class="space-y-1.5"></div>
+    <!-- CONTENEDOR DE SECCIONES POR GRUPO CON CAJAS DE ALUMNOS -->
+    <div id="lista-reportes" class="space-y-6"></div>
 
   </div>
 
+  <div id="pdf-contenedor-oculto" class="hidden"></div>
+
   <script>
     const WEB_APP_URL = 'https://script.google.com/macros/s/AKfycbxA_yMZUZgrCgVLPrNkGAL94455kLej_-sm1MaVpdbsLiNne3A2_WWfWrbSGGwUliNFcQ/exec';
+    const IMGBB_API_KEY = '3fd6d6924fa3188577aca199a2eff9bf';
 
     let db = { profesores: [], alumnos: [], reportes: [] };
     let tabActual = 'Pendiente';
 
     window.onload = function() {
-      const cached = localStorage.getItem('colegio_latino_db');
-      if (cached) {
-        db = JSON.parse(cached);
-        document.getElementById('cargando').classList.add('hidden');
-        renderReportes();
+      const savedPlantilla = localStorage.getItem('colegio_latino_plantilla_pdf');
+      if (savedPlantilla) {
+        document.getElementById('plantilla-maestra').innerHTML = savedPlantilla;
       }
+
+      const savedAlto = localStorage.getItem('colegio_latino_logo_alto') || '50';
+      const savedAncho = localStorage.getItem('colegio_latino_logo_ancho') || 'auto';
+      document.getElementById('logo-alto').value = savedAlto;
+      document.getElementById('logo-ancho').value = savedAncho;
+
+      actualizarVistaPreviaLogo();
       cargarDatos();
     };
 
@@ -61,6 +179,18 @@
         .then(data => {
           db = data;
           localStorage.setItem('colegio_latino_db', JSON.stringify(data));
+          
+          if(data.configuracionPDF) {
+            if(data.configuracionPDF.plantilla) {
+              localStorage.setItem('colegio_latino_plantilla_pdf', data.configuracionPDF.plantilla);
+              document.getElementById('plantilla-maestra').innerHTML = data.configuracionPDF.plantilla;
+            }
+            if(data.configuracionPDF.logoUrl) {
+              localStorage.setItem('colegio_latino_logo_url', data.configuracionPDF.logoUrl);
+              actualizarVistaPreviaLogo();
+            }
+          }
+
           document.getElementById('cargando').classList.add('hidden');
           renderReportes();
         });
@@ -79,17 +209,12 @@
       renderReportes();
     }
 
-    // FUNCIÓN PARA FORMATO DE FECHA LARGA Y CLARA EN ESPAÑOL
     function formatearFechaLarga(fechaStr) {
       if (!fechaStr) return 'Fecha no especificada';
       try {
         let partes = fechaStr.split('T')[0].split('-');
-        let fechaObj = partes.length === 3 
-          ? new Date(partes[0], partes[1] - 1, partes[2])
-          : new Date(fechaStr);
-
+        let fechaObj = partes.length === 3 ? new Date(partes[0], partes[1] - 1, partes[2]) : new Date(fechaStr);
         if (isNaN(fechaObj.getTime())) return fechaStr;
-
         let opciones = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
         let texto = fechaObj.toLocaleDateString('es-MX', opciones);
         return texto.charAt(0).toUpperCase() + texto.slice(1);
@@ -98,147 +223,194 @@
       }
     }
 
+    function toggleConfigGeneral() {
+      document.getElementById('modal-config-global').classList.toggle('hidden');
+    }
+
+    function aplicarEstilo(command) { document.execCommand(command, false, null); }
+    function aplicarColor(color) { document.execCommand('foreColor', false, color); }
+
+    function guardarDimensionesLogo() {
+      localStorage.setItem('colegio_latino_logo_alto', document.getElementById('logo-alto').value);
+      localStorage.setItem('colegio_latino_logo_ancho', document.getElementById('logo-ancho').value);
+    }
+
+    function subirAImgBB(file) {
+      if (!file) return;
+      document.getElementById('estado-subida').innerText = 'Subiendo imagen a ImgBB...';
+      const formData = new FormData();
+      formData.append('image', file);
+
+      fetch(`https://api.imgbb.com/1/upload?key=${IMGBB_API_KEY}`, { method: 'POST', body: formData })
+      .then(res => res.json())
+      .then(data => {
+        if (data.success) {
+          localStorage.setItem('colegio_latino_logo_url', data.data.url);
+          actualizarVistaPreviaLogo();
+          document.getElementById('estado-subida').innerText = '¡Logo subido con éxito!';
+        } else {
+          document.getElementById('estado-subida').innerText = 'Error al subir imagen.';
+        }
+      });
+    }
+
+    function actualizarVistaPreviaLogo() {
+      const container = document.getElementById('preview-logos-subidos');
+      const logoUrl = localStorage.getItem('colegio_latino_logo_url');
+      if (!logoUrl) {
+        container.innerHTML = '<span class="text-[10px] text-slate-400 italic">No hay logo cargado.</span>';
+        return;
+      }
+      container.innerHTML = `
+        <div class="relative inline-block border border-slate-700 bg-slate-800 p-1 rounded">
+          <img src="${logoUrl}" class="h-10 w-auto object-contain">
+          <button onclick="limpiarLogos()" class="absolute -top-1.5 -right-1.5 bg-red-600 text-white rounded-full w-4 h-4 text-[9px] font-bold flex items-center justify-center">×</button>
+        </div>`;
+    }
+
+    function limpiarLogos() {
+      if (confirm('¿Eliminar logo?')) {
+        localStorage.removeItem('colegio_latino_logo_url');
+        actualizarVistaPreviaLogo();
+      }
+    }
+
+    function guardarPlantillaGlobal() {
+      guardarDimensionesLogo();
+      const contenidoHTML = document.getElementById('plantilla-maestra').innerHTML;
+      const logoUrl = localStorage.getItem('colegio_latino_logo_url') || '';
+      localStorage.setItem('colegio_latino_plantilla_pdf', contenidoHTML);
+
+      fetch(WEB_APP_URL, {
+        method: 'POST',
+        body: JSON.stringify({ action: 'guardarConfiguracionPDF', plantilla: contenidoHTML, logoUrl: logoUrl })
+      })
+      .then(res => res.json())
+      .then(() => {
+        alert('¡Plantilla y logo respaldados correctamente en Google Sheets!');
+        toggleConfigGeneral();
+      });
+    }
+
+    // RENDERIZADO: GRUPOS SEPARADOS Y ALUMNOS EN CAJAS CUADRADAS INDEPENDIENTES
     function renderReportes() {
       const container = document.getElementById('lista-reportes');
       const reportesFiltrados = (db.reportes || []).filter(r => r.estatus === tabActual);
 
       if (reportesFiltrados.length === 0) {
-        container.innerHTML = `<p class="text-slate-400 text-center py-4 text-xs">No hay reportes ${tabActual.toLowerCase()}s.</p>`;
+        container.innerHTML = `<p class="text-slate-400 text-center py-6 text-xs">No hay reportes ${tabActual.toLowerCase()}s.</p>`;
         return;
       }
 
-      const agrupados = {};
+      // Agrupar por Grupo
+      const gruposMap = {};
       reportesFiltrados.forEach(r => {
-        if (!agrupados[r.alumno]) agrupados[r.alumno] = [];
-        agrupados[r.alumno].push(r);
+        const grupo = r.grupo || 'Sin Grupo';
+        if (!gruposMap[grupo]) gruposMap[grupo] = [];
+        gruposMap[grupo].push(r);
       });
 
-      container.innerHTML = Object.keys(agrupados).map(alumnoNombre => {
-        const incidencias = agrupados[alumnoNombre];
-        const alumInfo = (db.alumnos || []).find(a => a.nombre === alumnoNombre) || {};
-        const profInfo = (db.profesores || []).find(p => p.nombre === incidencias[0].profesor) || {};
-        const cleanId = alumnoNombre.replace(/[^a-zA-Z0-9]/g, '');
-        const materiasTexto = [...new Set(incidencias.map(i => i.materia))].join(', ');
-
-        const fechaTareaClara = formatearFechaLarga(incidencias[0].fechaTarea || incidencias[0].fecha);
-        const fechaRecepcionClara = formatearFechaLarga(incidencias[0].fechaRecepcion);
+      container.innerHTML = Object.keys(gruposMap).map(grupo => {
+        const reportesGrupo = gruposMap[grupo];
 
         return `
-          <div class="border border-slate-200 rounded-md p-2 bg-white hover:bg-slate-50 transition flex flex-wrap md:flex-nowrap justify-between items-center text-xs gap-2">
+          <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 md:p-4 shadow-sm space-y-3">
+            <div class="flex justify-between items-center border-b border-slate-300 pb-2">
+              <h3 class="font-black text-sm text-slate-800 uppercase">🏫 Grupo: ${grupo}</h3>
+              <span class="bg-indigo-600 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full">${reportesGrupo.length} reporte(s) en este grupo</span>
+            </div>
             
-            <!-- DATOS ALUMNO -->
-            <div class="flex items-center space-x-2.5 min-w-[220px]">
-              ${alumInfo.foto ? `<img src="${alumInfo.foto}" class="w-8 h-8 rounded-full object-cover shrink-0 border">` : `<div class="w-7 h-7 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0">👤</div>`}
-              <div class="truncate">
-                <div class="font-bold text-slate-800 text-xs truncate">${alumnoNombre}</div>
-                <div class="text-[10px] text-slate-500 font-semibold">${incidencias[0].grupo} • <b class="text-amber-600">${incidencias.length} reporte(s)</b></div>
-              </div>
-            </div>
+            <!-- CAJAS CUADRADAS PARA CADA ALUMNO -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+              ${reportesGrupo.map(r => {
+                const alumInfo = (db.alumnos || []).find(a => a.nombre === r.alumno) || {};
+                const profInfo = (db.profesores || []).find(p => p.nombre === r.profesor) || {};
 
-            <!-- RESUMEN -->
-            <div class="text-[11px] text-slate-600 truncate max-w-xs hidden lg:block">
-              <span class="bg-slate-100 px-1.5 py-0.5 rounded border text-[10px]"><b>Asignaturas:</b> ${materiasTexto}</span>
-            </div>
-
-            <!-- BOTONES -->
-            <div class="flex items-center space-x-1.5 font-bold text-[11px]">
-              <button onclick="descargarPDF('${cleanId}')" class="bg-red-600 text-white px-2 py-1 rounded hover:bg-red-700">
-                📄 Generar PDF
-              </button>
-              ${alumInfo.telMama ? `<a href="https://wa.me/521${alumInfo.telMama}?text=Estimada\%20Mam\%C3\%A1,\%20le\%20notificamos\%20el\%20reporte\%20de\%20tarea\%20de\%20${encodeURIComponent(alumnoNombre)}" target="_blank" class="bg-emerald-600 text-white px-2 py-1 rounded">📲 Mamá</a>` : ''}
-              ${alumInfo.telPapa ? `<a href="https://wa.me/521${alumInfo.telPapa}?text=Estimado\%20Pap\%C3\%A1,\%20le\%20notificamos\%20el\%20reporte\%20de\%20tarea\%20de\%20${encodeURIComponent(alumnoNombre)}" target="_blank" class="bg-emerald-600 text-white px-2 py-1 rounded">📲 Papá</a>` : ''}
-              ${alumInfo.telAbuelo ? `<a href="https://wa.me/521${alumInfo.telAbuelo}?text=Estimado\%20Tutor,\%20le\%20notificamos\%20el\%20reporte\%20de\%20tarea\%20de\%20${encodeURIComponent(alumnoNombre)}" target="_blank" class="bg-emerald-600 text-white px-2 py-1 rounded">📲 Abuelito</a>` : ''}
-              ${profInfo.telefono ? `<a href="https://wa.me/521${profInfo.telefono}?text=Estimado\%20Profesor,\%20se\%20ha\%20notificado\%20el\%20reporte\%20de\%20${encodeURIComponent(alumnoNombre)}" target="_blank" class="bg-blue-600 text-white px-2 py-1 rounded">👨‍‍🏫 Maestro</a>` : ''}
-
-              <!-- CHECKBOX -->
-              <label class="flex items-center space-x-1 font-bold text-slate-700 cursor-pointer bg-slate-100 px-1.5 py-1 rounded border ml-1">
-                <input type="checkbox" ${tabActual === 'Enviado' ? 'checked' : ''} onchange="marcarEnviado('${incidencias[0].id}', this.checked)" class="w-3.5 h-3.5 text-emerald-600 rounded">
-                <span class="text-[10px]">Enviado</span>
-              </label>
-            </div>
-
-            <!-- PLANTILLA DE PDF OFICIAL CON ESQUINA AZUL Y FECHAS LARGAS -->
-            <div class="hidden">
-              <div id="pdf-area-${cleanId}" class="p-8 font-sans text-slate-900 leading-relaxed bg-white relative overflow-hidden" style="width: 700px;">
-                
-                <!-- CORNER DECORATIVO AZUL MARINO EN LA ESQUINA SUPERIOR IZQUIERDA -->
-                <div style="position: absolute; top: 0; left: 0; width: 0; height: 0; border-top: 55px solid #0f172a; border-right: 55px solid transparent; z-index: 10;"></div>
-
-                <!-- ENCABEZADO -->
-                <div class="flex justify-between items-start border-b-2 border-slate-900 pb-3 mb-4 pl-6">
-                  <div>
-                    <h2 class="text-2xl font-black uppercase tracking-wider text-slate-950">COLEGIO LATINO</h2>
-                    <p class="text-xs font-semibold text-slate-700">OLIVO S/N FRACC. LOS REYES</p>
-                    <p class="text-xs font-semibold text-slate-700">TEL 937 37 2 28 63</p>
-                  </div>
-                  <div class="text-right flex items-center space-x-3">
+                return `
+                  <div class="bg-white border-2 border-slate-200 rounded-xl p-3 shadow-sm flex flex-col justify-between space-y-2 hover:border-indigo-300 transition">
                     <div>
-                      <p class="text-sm font-black">No de REPORTE: <span class="text-red-700">${incidencias[0].id.replace(/\D/g, '').substring(6, 10) || '100'}</span></p>
-                      <p class="text-xs font-bold text-slate-800">FECHA DE AVISO: ${fechaTareaClara}</p>
+                      <div class="flex items-center space-x-2 mb-2">
+                        ${alumInfo.foto ? `<img src="${alumInfo.foto}" class="w-9 h-9 rounded-full object-cover border shrink-0">` : `<div class="w-8 h-8 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center font-bold text-xs shrink-0">👤</div>`}
+                        <div class="truncate">
+                          <div class="font-black text-slate-900 text-xs truncate">${r.alumno}</div>
+                          <div class="text-[10px] text-slate-500 font-semibold">Prof: ${r.profesor}</div>
+                        </div>
+                      </div>
+
+                      <div class="bg-purple-50 text-purple-900 font-bold text-[11px] px-2 py-1 rounded mb-1.5 border border-purple-100">
+                        📚 Materia: ${r.materia}
+                      </div>
+
+                      <p class="text-[11px] text-slate-700 bg-slate-50 p-2 rounded border border-slate-100 line-clamp-3"><b>Desc:</b> ${r.descripcion}</p>
                     </div>
-                    ${alumInfo.foto ? `<img src="${alumInfo.foto}" class="w-16 h-16 rounded-lg object-cover border border-slate-400 shrink-0">` : ''}
+
+                    <div class="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-1">
+                      <div class="flex space-x-1">
+                        <button onclick="generarPDFIndividual('${r.id}')" class="bg-red-600 text-white px-2.5 py-1 rounded text-[10px] font-bold hover:bg-red-700 shadow-sm">📄 PDF</button>
+                        ${alumInfo.telMama ? `<a href="https://wa.me/521${alumInfo.telMama}?text=Estimada%20Mamá,%20reporte%20de%20tarea%20de%20${encodeURIComponent(r.alumno)}" target="_blank" class="bg-emerald-600 text-white px-2 py-1 rounded text-[10px] font-bold">📲 Mamá</a>` : ''}
+                      </div>
+
+                      <label class="flex items-center space-x-1 font-bold text-slate-700 cursor-pointer bg-slate-100 px-2 py-1 rounded border">
+                        <input type="checkbox" ${tabActual === 'Enviado' ? 'checked' : ''} onchange="marcarEnviado('${r.id}', this.checked)" class="w-3.5 h-3.5 text-emerald-600 rounded">
+                        <span class="text-[10px]">Enviado</span>
+                      </label>
+                    </div>
                   </div>
-                </div>
-
-                <!-- CUERPO DE LA CITATORIA / REPORTE -->
-                <div class="text-sm space-y-4 my-6">
-                  <p class="text-justify leading-relaxed">
-                    Docente <b>${incidencias[0].profesor}</b> reporta que el alumno(a) 
-                    <b class="text-base uppercase border-b-2 border-slate-900 px-1 font-black">${alumnoNombre}</b> 
-                    debe tareas en las siguientes asignaturas: <b>${materiasTexto}</b>.
-                  </p>
-
-                  <div class="bg-slate-50 p-4 border border-slate-300 rounded-lg shadow-sm">
-                    <p class="font-bold text-xs uppercase mb-2 text-slate-800 border-b pb-1">DETALLE DE TAREAS Y LIBROS PENDIENTES:</p>
-                    <ul class="list-disc list-inside space-y-1.5 text-xs text-slate-800">
-                      ${incidencias.map(i => `<li><b>[${i.materia}]:</b>${i.descripcion}</li>`).join('')}
-                    </ul>
-                  </div>
-
-                  <!-- FECHA LÍMITE DESTACADA EN TEXTO LARGO CLARO -->
-                  <div class="p-3 bg-amber-50 border border-amber-200 rounded-lg">
-                    <p class="font-black text-xs text-amber-900 uppercase">
-                      📅 FECHA EN LA QUE SE RECIBIRÁ LA TAREA:
-                    </p>
-                    <p class="text-sm font-extrabold text-amber-950 mt-0.5">
-                      ${fechaRecepcionClara}
-                    </p>
-                  </div>
-
-                  <p class="text-xs italic text-slate-700 mt-4 leading-normal">
-                    Lo anterior para que nos apoye y su hijo (a) se ponga al corriente con sus pendientes escolares.<br>
-                    Gracias de antemano por su apoyo.
-                  </p>
-                </div>
-
-                <!-- FIRMAS -->
-                <div class="mt-16 text-center text-xs">
-                  <p class="font-bold">Atte.</p>
-                  <p class="font-black text-sm uppercase text-slate-900">Dirección de Secundaria y Preparatoria</p>
-                  <div class="w-48 border-b border-slate-900 mx-auto mt-12"></div>
-                  <p class="text-[10px] text-slate-600 mt-1 font-semibold">Firma de Enterado del Padre o Tutor</p>
-                </div>
-
-              </div>
+                `;
+              }).join('')}
             </div>
-
           </div>
         `;
       }).join('');
     }
 
-    function descargarPDF(elementId) {
-      const element = document.getElementById('pdf-area-' + elementId);
-      element.parentElement.classList.remove('hidden');
+    function generarPDFIndividual(idReporte) {
+      const r = (db.reportes || []).find(rep => rep.id === idReporte);
+      if (!r) return alert('Reporte no encontrado');
+
+      const alumnoNombre = r.alumno;
+      const fechaAviso = formatearFechaLarga(r.fechaTarea || r.fecha);
+      const fechaRecepcion = formatearFechaLarga(r.fechaRecepcion);
+      const idCorto = r.id.replace(/\D/g, '').substring(6, 10) || '100';
+      const grupo = r.grupo || 'Sin grupo';
+      const profesor = r.profesor || 'Docente';
+      const materia = r.materia || 'General';
+
+      let detallesHTML = `<ul class="list-disc list-inside space-y-1"><li><b>[${materia}]:</b> ${r.descripcion}</li></ul>`;
+
+      const altoPx = localStorage.getItem('colegio_latino_logo_alto') || '50';
+      const anchoPx = localStorage.getItem('colegio_latino_logo_ancho') || 'auto';
+      const styleAncho = anchoPx === 'auto' ? 'width: auto;' : `width: ${anchoPx}px;`;
+      const logoUrl = localStorage.getItem('colegio_latino_logo_url') || '';
+      let logosHTML = logoUrl ? `<img src="${logoUrl}" style="height: ${altoPx}px; ${styleAncho}" class="object-contain inline-block mr-2 border border-slate-200 rounded p-0.5">` : '';
+
+      let plantillaHTML = localStorage.getItem('colegio_latino_plantilla_pdf') || document.getElementById('plantilla-maestra').innerHTML;
+
+      plantillaHTML = plantillaHTML
+        .replace(/\{\{logos\}\}/g, logosHTML)
+        .replace(/\{\{alumno\}\}/g, alumnoNombre)
+        .replace(/\{\{grupo\}\}/g, grupo)
+        .replace(/\{\{profesor\}\}/g, profesor)
+        .replace(/\{\{materias\}\}/g, materia)
+        .replace(/\{\{detalles\}\}/g, detallesHTML)
+        .replace(/\{\{fechaAviso\}\}/g, fechaAviso)
+        .replace(/\{\{fechaRecepcion\}\}/g, fechaRecepcion)
+        .replace(/\{\{idReporte\}\}/g, idCorto);
+
+      const contenedor = document.getElementById('pdf-contenedor-oculto');
+      contenedor.innerHTML = `<div id="pdf-renderizado" class="bg-white p-8 font-sans text-slate-900 leading-relaxed relative overflow-hidden" style="width: 700px;">${plantillaHTML}</div>`;
+      contenedor.classList.remove('hidden');
+
       const opt = {
-        margin:       0.3,
-        filename:     'Reporte_Tarea_' + elementId + '.pdf',
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2 },
-        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+        margin: 0.3,
+        filename: 'Reporte_Tarea_' + alumnoNombre.replace(/\s+/g, '_') + '.pdf',
+        image: { type: 'jpeg', quality: 0.98 },
+        html2canvas: { scale: 2 },
+        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
       };
-      html2pdf().set(opt).from(element).save().then(() => {
-        element.parentElement.classList.add('hidden');
+
+      html2pdf().set(opt).from(document.getElementById('pdf-renderizado')).save().then(() => {
+        contenedor.classList.add('hidden');
       });
     }
 

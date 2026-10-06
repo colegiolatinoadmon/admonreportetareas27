@@ -47,7 +47,7 @@
 
       <!-- ZONA PARA SUBIR LOGOS A IMGBB -->
       <div class="bg-slate-900 p-3 rounded-lg border border-slate-700 space-y-2">
-        <p class="text-xs font-bold text-yellow-200">🖼️ Subir Logo (Se aloja automáticamente en ImgBB y se sincroniza en Sheets):</p>
+        <p class="text-xs font-bold text-yellow-200">🖼️️ Subir Logo (Se aloja automáticamente en ImgBB y se sincroniza en Sheets):</p>
         
         <div class="flex flex-wrap items-center gap-3">
           <div>
@@ -158,7 +158,7 @@
       <p class="text-[11px] font-semibold text-slate-500">Cargando reportes desde Google Sheets...</p>
     </div>
 
-    <!-- CONTENEDOR DE SECCIONES POR GRUPO CON CAJAS COMPACTAS -->
+    <!-- CONTENEDOR DE SECCIONES POR GRUPO CON CAJAS COMPACTAS Y SEMÁFOROS -->
     <div id="lista-reportes" class="space-y-4"></div>
 
   </div>
@@ -221,9 +221,7 @@
         if(r.profesor) conteoProfesor[r.profesor] = (conteoProfesor[r.profesor] || 0) + 1;
       });
 
-      // Ordenar y tomar top 3 de alumnos
       const topAlumnos = Object.entries(conteoAlumnos).sort((a,b) => b[1] - a[1]).slice(0, 3);
-      // Ordenar y tomar top 3 de profesores
       const topProfesor = Object.entries(conteoProfesor).sort((a,b) => b[1] - a[1]).slice(0, 3);
 
       document.getElementById('top-alumnos').innerHTML = topAlumnos.length > 0 
@@ -331,7 +329,7 @@
       });
     }
 
-    // RENDERIZADO: ORDENAMIENTO POR FECHAS, CAJAS COMPACTAS Y BOTONES MÚLTIPLES DE WHATSAPP
+    // RENDERIZADO CON SEMÁFOROS, ORDENAMIENTO, DESCARGA MASIVA Y CAJAS COMPACTAS
     function renderReportes() {
       const container = document.getElementById('lista-reportes');
       let reportesFiltrados = (db.reportes || []).filter(r => r.estatus === tabActual);
@@ -341,14 +339,12 @@
         return;
       }
 
-      // Ordenar reportes según pestaña activa (Pendientes: más antiguas primero / Enviados: más recientes primero)
       reportesFiltrados.sort((a, b) => {
         let fechaA = new Date(a.fecha || a.fechaTarea || 0);
         let fechaB = new Date(b.fecha || b.fechaTarea || 0);
         return tabActual === 'Pendiente' ? fechaA - fechaB : fechaB - fechaA;
       });
 
-      // Agrupar por Grupo
       const gruposMap = {};
       reportesFiltrados.forEach(r => {
         const grupo = r.grupo || 'Sin Grupo';
@@ -356,41 +352,66 @@
         gruposMap[grupo].push(r);
       });
 
+      const hoy = new Date();
+
       container.innerHTML = Object.keys(gruposMap).map(grupo => {
         const reportesGrupo = gruposMap[grupo];
 
         return `
           <div class="bg-slate-50 border border-slate-200 rounded-lg p-2.5 shadow-sm space-y-2">
             <div class="flex justify-between items-center border-b border-slate-300 pb-1.5">
-              <h3 class="font-black text-xs text-slate-800 uppercase">🏫 Grupo: ${grupo}</h3>
-              <span class="bg-indigo-600 text-white text-[9px] font-extrabold px-2 py-0.5 rounded-full">${reportesGrupo.length} reporte(s)</span>
+              <div class="flex items-center space-x-2">
+                <h3 class="font-black text-xs text-slate-800 uppercase">🏫 Grupo: ${grupo}</h3>
+                <span class="bg-indigo-600 text-white text-[9px] font-extrabold px-2 py-0.5 rounded-full">${reportesGrupo.length} reporte(s)</span>
+              </div>
+              ${tabActual === 'Pendiente' ? `<button onclick="descargarGrupoMasivo('${grupo}')" class="bg-blue-600 hover:bg-blue-700 text-white px-2 py-1 rounded text-[10px] font-bold shadow-sm">📥 Descargar Grupo Lote</button>` : ''}
             </div>
             
             <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
               ${reportesGrupo.map(r => {
                 const alumInfo = (db.alumnos || []).find(a => a.nombre.trim().toLowerCase() === r.alumno.trim().toLowerCase()) || {};
                 
-                const mensajeWA = encodeURIComponent(`Estimado tutor, le notificamos el reporte de tarea de ${r.alumno} en la materia de${r.materia}.`);
+                let claseSemaforo = "border-slate-200";
+                let indicadorAntiguedad = "";
+                if (tabActual === 'Pendiente' && r.fecha) {
+                  let fechaRep = new Date(r.fecha);
+                  let diffDias = Math.floor((hoy - fechaRep) / (1000 * 60 * 60 * 24));
+                  if (diffDias > 5) {
+                    claseSemaforo = "border-red-500 bg-red-50/30 ring-1 ring-red-400";
+                    indicadorAntiguedad = `<span class="bg-red-600 text-white text-[8px] font-bold px-1.5 py-0.2 rounded-full">Urgente (${diffDias}d)</span>`;
+                  } else if (diffDias >= 3) {
+                    claseSemaforo = "border-amber-400 bg-amber-50/20";
+                    indicadorAntiguedad = `<span class="bg-amber-500 text-white text-[8px] font-bold px-1.5 py-0.2 rounded-full">Moderado (${diffDias}d)</span>`;
+                  } else {
+                    claseSemaforo = "border-emerald-300 bg-emerald-50/25";
+                    indicadorAntiguedad = `<span class="bg-emerald-600 text-white text-[8px] font-bold px-1.5 py-0.2 rounded-full">Reciente</span>`;
+                  }
+                }
+
+                const mensajeWA = encodeURIComponent(`Estimado tutor, le notificamos el aviso de tarea de ${r.alumno} en la materia de${r.materia}.`);
 
                 let telMama = alumInfo.telMama ? alumInfo.telMama.replace(/\D/g, '') : '';
                 let telPapa = alumInfo.telPapa ? alumInfo.telPapa.replace(/\D/g, '') : '';
                 let telAbuelo = alumInfo.telAbuelo ? alumInfo.telAbuelo.replace(/\D/g, '') : '';
 
                 return `
-                  <div class="bg-white border border-slate-200 rounded-lg p-2 shadow-sm flex flex-col justify-between space-y-1.5 hover:border-indigo-300 transition">
+                  <div class="bg-white border-2 ${claseSemaforo} rounded-lg p-2 shadow-sm flex flex-col justify-between space-y-1.5 transition">
                     <div class="flex items-center justify-between">
                       <div class="flex items-center space-x-1.5 truncate">
                         ${alumInfo.foto ? `<img src="${alumInfo.foto}" class="w-6 h-6 rounded-full object-cover border shrink-0">` : `<div class="w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0">👤</div>`}
                         <span class="font-black text-slate-900 text-xs truncate">${r.alumno}</span>
                       </div>
-                      <span class="text-[9px] text-slate-400 font-semibold">${r.fecha ? r.fecha.split('T')[0] : ''}</span>
+                      <div class="flex items-center space-x-1">
+                        ${indicadorAntiguedad}
+                        <span class="text-[9px] text-slate-400 font-semibold">${r.fecha ? r.fecha.split('T')[0] : ''}</span>
+                      </div>
                     </div>
 
                     <div class="bg-purple-50 text-purple-900 font-bold text-[10px] px-1.5 py-0.5 rounded border border-purple-100 truncate">
                       📚 Materia: ${r.materia}
                     </div>
 
-                    <!-- BOTONES INDIVIDUALES POR CADA NÚMERO DE WHATSAPP REGISTRADO -->
+                    <!-- BOTONES MÚLTIPLES DE WHATSAPP Y PDF -->
                     <div class="pt-1 border-t border-slate-100 flex flex-col gap-1">
                       <div class="flex flex-wrap gap-1 items-center">
                         <button onclick="generarPDFIndividual('${r.id}')" class="bg-red-600 text-white px-2 py-0.5 rounded text-[9px] font-bold hover:bg-red-700 shadow-sm">📄 PDF</button>
@@ -419,56 +440,76 @@
     }
 
     function generarPDFIndividual(idReporte) {
-      const r = (db.reportes || []).find(rep => rep.id === idReporte);
-      if (!r) return alert('Reporte no encontrado');
+      return new Promise((resolve) => {
+        const r = (db.reportes || []).find(rep => rep.id === idReporte);
+        if (!r) return resolve();
 
-      const alumnoNombre = r.alumno;
-      const fechaAviso = formatearFechaLarga(r.fechaTarea || r.fecha);
-      const fechaRecepcion = formatearFechaLarga(r.fechaRecepcion);
-      const idCorto = r.id.replace(/\D/g, '').substring(6, 10) || '100';
-      const grupo = r.grupo || 'Sin grupo';
-      const profesor = r.profesor || 'Docente';
-      const materia = r.materia || 'General';
+        const alumnoNombre = r.alumno;
+        const fechaAviso = formatearFechaLarga(r.fechaTarea || r.fecha);
+        const fechaRecepcion = formatearFechaLarga(r.fechaRecepcion);
+        
+        // Número de reporte de 4 dígitos extraído del ID
+        const idCorto = r.id.replace(/\D/g, '').slice(-4).padStart(4, '0') || '1000';
+        
+        const grupo = r.grupo || 'Sin grupo';
+        const profesor = r.profesor || 'Docente';
+        const materia = r.materia || 'General';
 
-      let detallesHTML = `<ul class="list-disc list-inside space-y-1"><li><b>[${materia}]:</b> ${r.descripcion}</li></ul>`;
+        let detallesHTML = `<ul class="list-disc list-inside space-y-1"><li><b>[${materia}]:</b> ${r.descripcion}</li></ul>`;
 
-      const altoPx = localStorage.getItem('colegio_latino_logo_alto') || '50';
-      const anchoPx = localStorage.getItem('colegio_latino_logo_ancho') || 'auto';
-      const styleAncho = anchoPx === 'auto' ? 'width: auto;' : `width: ${anchoPx}px;`;
-      const logoUrl = localStorage.getItem('colegio_latino_logo_url') || '';
-      let logosHTML = logoUrl ? `<img src="${logoUrl}" style="height: ${altoPx}px; ${styleAncho}" class="object-contain inline-block mr-2 border border-slate-200 rounded p-0.5">` : '';
+        const altoPx = localStorage.getItem('colegio_latino_logo_alto') || '50';
+        const anchoPx = localStorage.getItem('colegio_latino_logo_ancho') || 'auto';
+        const styleAncho = anchoPx === 'auto' ? 'width: auto;' : `width: ${anchoPx}px;`;
+        const logoUrl = localStorage.getItem('colegio_latino_logo_url') || '';
+        let logosHTML = logoUrl ? `<img src="${logoUrl}" style="height: ${altoPx}px; ${styleAncho}" class="object-contain inline-block mr-2 border border-slate-200 rounded p-0.5">` : '';
 
-      let plantillaHTML = localStorage.getItem('colegio_latino_plantilla_pdf') || document.getElementById('plantilla-maestra').innerHTML;
+        let plantillaHTML = localStorage.getItem('colegio_latino_plantilla_pdf') || document.getElementById('plantilla-maestra').innerHTML;
 
-      plantillaHTML = plantillaHTML
-        .replace(/\{\{logos\}\}/g, logosHTML)
-        .replace(/\{\{alumno\}\}/g, alumnoNombre)
-        .replace(/\{\{grupo\}\}/g, grupo)
-        .replace(/\{\{profesor\}\}/g, profesor)
-        .replace(/\{\{materias\}\}/g, materia)
-        .replace(/\{\{detalles\}\}/g, detallesHTML)
-        .replace(/\{\{fechaAviso\}\}/g, fechaAviso)
-        .replace(/\{\{fechaRecepcion\}\}/g, fechaRecepcion)
-        .replace(/\{\{idReporte\}\}/g, idCorto);
+        plantillaHTML = plantillaHTML
+          .replace(/\{\{logos\}\}/g, logosHTML)
+          .replace(/\{\{alumno\}\}/g, alumnoNombre)
+          .replace(/\{\{grupo\}\}/g, grupo)
+          .replace(/\{\{profesor\}\}/g, profesor)
+          .replace(/\{\{materias\}\}/g, materia)
+          .replace(/\{\{detalles\}\}/g, detallesHTML)
+          .replace(/\{\{fechaAviso\}\}/g, fechaAviso)
+          .replace(/\{\{fechaRecepcion\}\}/g, fechaRecepcion)
+          .replace(/\{\{idReporte\}\}/g, idCorto);
 
-      const contenedor = document.getElementById('pdf-contenedor-oculto');
-      contenedor.innerHTML = `<div id="pdf-renderizado" class="bg-white p-8 font-sans text-slate-900 leading-relaxed relative overflow-hidden" style="width: 700px;">${plantillaHTML}</div>`;
-      contenedor.classList.remove('hidden');
+        const contenedor = document.getElementById('pdf-contenedor-oculto');
+        contenedor.innerHTML = `<div id="pdf-renderizado" class="bg-white p-8 font-sans text-slate-900 leading-relaxed relative overflow-hidden" style="width: 700px;">${plantillaHTML}</div>`;
+        contenedor.classList.remove('hidden');
 
-      // Nombre del archivo PDF formateado como AVISO_TAREA_[NOMBRE_DEL_ALUMNO]
-      const nombreArchivoPDF = 'AVISO_TAREA_' + alumnoNombre.trim().replace(/\s+/g, '_') + '.pdf';
+        // Nomenclatura exacta con número de reporte de 4 dígitos, aviso, tarea y nombre del alumno
+        const nombreArchivoPDF = `AVISO_TAREA_${idCorto}_` + alumnoNombre.trim().replace(/\s+/g, '_') + '.pdf';
 
-      const opt = {
-        margin: 0.3,
-        filename: nombreArchivoPDF,
-        image: { type: 'jpeg', quality: 0.98 },
-        html2canvas: { scale: 2 },
-        jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
-      };
+        const opt = {
+          margin: 0.3,
+          filename: nombreArchivoPDF,
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2 },
+          jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
+        };
 
-      html2pdf().set(opt).from(document.getElementById('pdf-renderizado')).save().then(() => {
-        contenedor.classList.add('hidden');
+        html2pdf().set(opt).from(document.getElementById('pdf-renderizado')).save().then(() => {
+          contenedor.classList.add('hidden');
+          resolve();
+        });
       });
+    }
+
+    // DESCARGA MASIVA POR GRUPO
+    async function descargarGrupoMasivo(grupo) {
+      const reportesGrupo = (db.reportes || []).filter(r => r.grupo === grupo && r.estatus === 'Pendiente');
+      if (reportesGrupo.length === 0) return alert('No hay reportes pendientes en este grupo.');
+
+      if (!confirm(`Se descargarán ${reportesGrupo.length} archivos PDF consecutivos para el grupo ${grupo}. ¿Desea continuar?`)) return;
+
+      for (let i = 0; i < reportesGrupo.length; i++) {
+        await generarPDFIndividual(reportesGrupo[i].id);
+        await new Promise(r => setTimeout(r, 600));
+      }
+      alert('¡Descarga masiva del grupo finalizada con éxito!');
     }
 
     function marcarEnviado(idReporte, checked) {

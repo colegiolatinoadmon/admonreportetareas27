@@ -33,7 +33,7 @@
 
       <!-- ZONA PARA SUBIR LOGOS A IMGBB -->
       <div class="bg-slate-900 p-3 rounded-lg border border-slate-700 space-y-2">
-        <p class="text-xs font-bold text-yellow-200">🖼️ Subir Logo (Se aloja automáticamente en ImgBB y se sincroniza en Sheets):</p>
+        <p class="text-xs font-bold text-yellow-200">🖼️ Subir Logo (Se aloja automáticamente en ImgBB y se sincroniza en Sheets)[cite: 1]:</p>
         
         <div class="flex flex-wrap items-center gap-3">
           <div>
@@ -50,7 +50,7 @@
             <input type="number" id="logo-ancho" value="auto" onchange="guardarDimensionesLogo()" class="w-20 text-xs bg-slate-800 border border-slate-600 rounded p-1 text-white text-center font-bold" placeholder="auto">
           </div>
 
-          <button onclick="limpiarLogos()" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded text-xs font-bold self-end">🗑️ Borrar Logo</button>
+          <button onclick="limpiarLogos()" class="bg-red-600 hover:bg-red-700 text-white px-3 py-1.5 rounded text-xs font-bold self-end">🗑️️ Borrar Logo</button>
         </div>
 
         <div id="preview-logos-subidos" class="flex flex-wrap gap-2 mt-2 pt-2 border-t border-slate-800"></div>
@@ -80,7 +80,7 @@
           <input type="color" onchange="aplicarColor(this.value)" class="w-6 h-6 rounded cursor-pointer border-0 bg-transparent" value="#0f172a">
         </div>
         <button onclick="guardarPlantillaGlobal()" class="ml-auto bg-emerald-600 hover:bg-emerald-700 text-white px-3 py-1 rounded font-bold text-xs">
-          💾 Guardar Plantilla y Respaldar en Sheets
+          💾 Guardar Plantilla y Respaldar en Sheets[cite: 1]
         </button>
       </div>
 
@@ -141,11 +141,11 @@
 
     <div id="cargando" class="text-center py-4">
       <div id="spinner" class="inline-block animate-spin rounded-full h-6 w-6 border-2 border-indigo-600 border-t-transparent mb-1"></div>
-      <p class="text-[11px] font-semibold text-slate-500">Cargando reportes desde Google Sheets...</p>
+      <p class="text-[11px] font-semibold text-slate-500">Cargando reportes desde Google Sheets...[cite: 1]</p>
     </div>
 
-    <!-- CONTENEDOR DE SECCIONES POR GRUPO CON CAJAS DE ALUMNOS -->
-    <div id="lista-reportes" class="space-y-6"></div>
+    <!-- CONTENEDOR DE SECCIONES POR GRUPO CON CAJAS COMPACTAS (SOLO MATERIA, SIN DESCRIPCIÓN) -->
+    <div id="lista-reportes" class="space-y-4"></div>
 
   </div>
 
@@ -287,20 +287,33 @@
       })
       .then(res => res.json())
       .then(() => {
-        alert('¡Plantilla y logo respaldados correctamente en Google Sheets!');
+        alert('¡Plantilla y logo respaldados correctamente en Google Sheets![cite: 1]');
         toggleConfigGeneral();
       });
     }
 
-    // RENDERIZADO: GRUPOS SEPARADOS Y ALUMNOS EN CAJAS CUADRADAS INDEPENDIENTES
+    // RENDERIZADO: ORDENAMIENTO POR FECHAS Y CAJAS COMPACTAS (SOLO MATERIA, SIN DESCRIPCIÓN)
     function renderReportes() {
       const container = document.getElementById('lista-reportes');
-      const reportesFiltrados = (db.reportes || []).filter(r => r.estatus === tabActual);
+      let reportesFiltrados = (db.reportes || []).filter(r => r.estatus === tabActual);
 
       if (reportesFiltrados.length === 0) {
         container.innerHTML = `<p class="text-slate-400 text-center py-6 text-xs">No hay reportes ${tabActual.toLowerCase()}s.</p>`;
         return;
       }
+
+      // Ordenar reportes según la pestaña activa:
+      // - Pendientes: Antiguas a Recientes (ascendente)
+      // - Enviados: Recientes a Antiguas (descendente)
+      reportesFiltrados.sort((a, b) => {
+        let fechaA = new Date(a.fecha || a.fechaTarea || 0);
+        let fechaB = new Date(b.fecha || b.fechaTarea || 0);
+        if (tabActual === 'Pendiente') {
+          return fechaA - fechaB; // Más antiguas primero
+        } else {
+          return fechaB - fechaA; // Más recientes primero
+        }
+      });
 
       // Agrupar por Grupo
       const gruposMap = {};
@@ -314,45 +327,40 @@
         const reportesGrupo = gruposMap[grupo];
 
         return `
-          <div class="bg-slate-50 border border-slate-200 rounded-xl p-3 md:p-4 shadow-sm space-y-3">
-            <div class="flex justify-between items-center border-b border-slate-300 pb-2">
-              <h3 class="font-black text-sm text-slate-800 uppercase">🏫 Grupo: ${grupo}</h3>
-              <span class="bg-indigo-600 text-white text-[10px] font-extrabold px-2.5 py-1 rounded-full">${reportesGrupo.length} reporte(s) en este grupo</span>
+          <div class="bg-slate-50 border border-slate-200 rounded-lg p-2.5 shadow-sm space-y-2">
+            <div class="flex justify-between items-center border-b border-slate-300 pb-1.5">
+              <h3 class="font-black text-xs text-slate-800 uppercase">🏫 Grupo: ${grupo}</h3>
+              <span class="bg-indigo-600 text-white text-[9px] font-extrabold px-2 py-0.5 rounded-full">${reportesGrupo.length} reporte(s)</span>
             </div>
             
-            <!-- CAJAS CUADRADAS PARA CADA ALUMNO -->
-            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
+            <!-- CAJAS COMPACTAS CUADRADAS PARA CADA ALUMNO (SOLO NOMBRE Y MATERIA) -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-2">
               ${reportesGrupo.map(r => {
                 const alumInfo = (db.alumnos || []).find(a => a.nombre === r.alumno) || {};
-                const profInfo = (db.profesores || []).find(p => p.nombre === r.profesor) || {};
 
                 return `
-                  <div class="bg-white border-2 border-slate-200 rounded-xl p-3 shadow-sm flex flex-col justify-between space-y-2 hover:border-indigo-300 transition">
-                    <div>
-                      <div class="flex items-center space-x-2 mb-2">
-                        ${alumInfo.foto ? `<img src="${alumInfo.foto}" class="w-9 h-9 rounded-full object-cover border shrink-0">` : `<div class="w-8 h-8 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center font-bold text-xs shrink-0">👤</div>`}
-                        <div class="truncate">
-                          <div class="font-black text-slate-900 text-xs truncate">${r.alumno}</div>
-                          <div class="text-[10px] text-slate-500 font-semibold">Prof: ${r.profesor}</div>
-                        </div>
+                  <div class="bg-white border border-slate-200 rounded-lg p-2 shadow-sm flex flex-col justify-between space-y-1.5 hover:border-indigo-300 transition">
+                    <div class="flex items-center justify-between">
+                      <div class="flex items-center space-x-1.5 truncate">
+                        ${alumInfo.foto ? `<img src="${alumInfo.foto}" class="w-6 h-6 rounded-full object-cover border shrink-0">` : `<div class="w-6 h-6 bg-indigo-100 text-indigo-700 rounded-full flex items-center justify-center font-bold text-[10px] shrink-0">👤</div>`}
+                        <span class="font-black text-slate-900 text-xs truncate">${r.alumno}</span>
                       </div>
-
-                      <div class="bg-purple-50 text-purple-900 font-bold text-[11px] px-2 py-1 rounded mb-1.5 border border-purple-100">
-                        📚 Materia: ${r.materia}
-                      </div>
-
-                      <p class="text-[11px] text-slate-700 bg-slate-50 p-2 rounded border border-slate-100 line-clamp-3"><b>Desc:</b> ${r.descripcion}</p>
+                      <span class="text-[9px] text-slate-400 font-semibold">${r.fecha ? r.fecha.split('T')[0] : ''}</span>
                     </div>
 
-                    <div class="pt-2 border-t border-slate-100 flex flex-wrap items-center justify-between gap-1">
+                    <div class="bg-purple-50 text-purple-900 font-bold text-[10px] px-1.5 py-0.5 rounded border border-purple-100 truncate">
+                      📚 Materia: ${r.materia}
+                    </div>
+
+                    <div class="pt-1 border-t border-slate-100 flex items-center justify-between gap-1">
                       <div class="flex space-x-1">
-                        <button onclick="generarPDFIndividual('${r.id}')" class="bg-red-600 text-white px-2.5 py-1 rounded text-[10px] font-bold hover:bg-red-700 shadow-sm">📄 PDF</button>
-                        ${alumInfo.telMama ? `<a href="https://wa.me/521${alumInfo.telMama}?text=Estimada%20Mamá,%20reporte%20de%20tarea%20de%20${encodeURIComponent(r.alumno)}" target="_blank" class="bg-emerald-600 text-white px-2 py-1 rounded text-[10px] font-bold">📲 Mamá</a>` : ''}
+                        <button onclick="generarPDFIndividual('${r.id}')" class="bg-red-600 text-white px-2 py-0.5 rounded text-[9px] font-bold hover:bg-red-700 shadow-sm">📄 PDF[cite: 1]</button>
+                        ${alumInfo.telMama ? `<a href="https://wa.me/521${alumInfo.telMama}?text=Estimada%20Mamá,%20reporte%20de%20tarea%20de%20${encodeURIComponent(r.alumno)}" target="_blank" class="bg-emerald-600 text-white px-2 py-0.5 rounded text-[9px] font-bold">📲 WhatsApp[cite: 1]</a>` : ''}
                       </div>
 
-                      <label class="flex items-center space-x-1 font-bold text-slate-700 cursor-pointer bg-slate-100 px-2 py-1 rounded border">
-                        <input type="checkbox" ${tabActual === 'Enviado' ? 'checked' : ''} onchange="marcarEnviado('${r.id}', this.checked)" class="w-3.5 h-3.5 text-emerald-600 rounded">
-                        <span class="text-[10px]">Enviado</span>
+                      <label class="flex items-center space-x-1 font-bold text-slate-700 cursor-pointer bg-slate-100 px-1.5 py-0.5 rounded border">
+                        <input type="checkbox" ${tabActual === 'Enviado' ? 'checked' : ''} onchange="marcarEnviado('${r.id}', this.checked)" class="w-3 h-3 text-emerald-600 rounded">
+                        <span class="text-[9px]">Enviado[cite: 1]</span>
                       </label>
                     </div>
                   </div>
@@ -403,7 +411,7 @@
 
       const opt = {
         margin: 0.3,
-        filename: 'Reporte_Tarea_' + alumnoNombre.replace(/\s+/g, '_') + '.pdf',
+        filename: 'Aviso_Tarea_' + alumnoNombre.replace(/\s+/g, '_') + '.pdf',
         image: { type: 'jpeg', quality: 0.98 },
         html2canvas: { scale: 2 },
         jsPDF: { unit: 'in', format: 'letter', orientation: 'portrait' }
